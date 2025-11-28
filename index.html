@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مولد تعيين الدرجات</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Updated layout with both elements on the same line -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; gap: 10px;">
+        <button class="btn" id="createFolderBtn" disabled style="flex: 1; min-width: 0;">انشاء مجلد التقييم</button>
+        <div style="flex: 1; min-width: 0;">
+            <input type="file" id="excelFile" accept=".xlsx,.xls" style="display: none;">
+            
+            <!-- File upload area with dotted frame and interactive filling -->
+            <div class="file-upload-area" id="fileUploadArea">
+                <i>📁</i>
+                <p>الرجاء رفع ملف الإكسل</p>
+                <p class="file-info">سيظهر اسم الملف هنا بعد التحميل</p>
+                <p class="file-name" id="fileNameDisplay">لا يوجد ملف مرفوق</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="unit-title-container">
+        <label for="unitTitle" class="unit-title-label">عنوان الوحدة:</label>
+        <input type="text" id="unitTitle" name="unitTitle" class="unit-title-input" placeholder="أدخل عنوان الوحدة">
+    </div>
+    
+    <div class="main-div" id="mainDiv">
+        <!-- This area is empty for you to build manually -->
+    </div>
+    
+    <div style="text-align: center; margin-top: 20px;">
+        <button id="saveBtn">حفظ المجلد</button>
+    </div>
+    
+    <script>
+        let studentNames = []; // Array to store student names from Excel file
+        
+        // Make the file upload area button clickable
+        document.getElementById('fileUploadArea').addEventListener('click', function() {
+            document.getElementById('excelFile').click();
+        });
+        
+        document.getElementById('excelFile').addEventListener('change', function() {
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                // Display file name in the upload area
+                document.getElementById('fileNameDisplay').textContent = file.name;
+                
+                // Update the upload area style to show uploaded state
+                const uploadArea = document.getElementById('fileUploadArea');
+                uploadArea.classList.add('uploaded');
+                
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                fetch('http://localhost:5000/upload_excel', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('خطأ في قراءة ملف الإكسل: ' + data.error);
+                        // Reset file display
+                        document.getElementById('fileNameDisplay').textContent = 'خطأ في الملف';
+                        uploadArea.classList.remove('uploaded');
+                        // Keep create button disabled
+                        document.getElementById('createFolderBtn').disabled = true;
+                        return;
+                    }
+                    
+                    studentNames = data.student_names || [];
+                    
+                    // Enable the create folder button after successful file upload
+                    document.getElementById('createFolderBtn').disabled = false;
+                    
+                    // Update the file info text
+                    document.querySelector('.file-info').textContent = `تم تحميل ${studentNames.length} طالب/طالبة`;
+                })
+                .catch(error => {
+                    alert('خطأ في تحميل ملف الإكسل: ' + error.message);
+                    // Reset file display
+                    document.getElementById('fileNameDisplay').textContent = 'خطأ في التحميل';
+                    uploadArea.classList.remove('uploaded');
+                    // Keep create button disabled
+                    document.getElementById('createFolderBtn').disabled = true;
+                });
+            }
+        });
+        
+        let currentFolderId = null; // Store the folder ID after creation
+        
+        document.getElementById('createFolderBtn').addEventListener('click', function() {
+            const unitTitle = document.getElementById('unitTitle').value;
+            if (unitTitle.trim() === '') {
+                alert('الرجاء إدخال عنوان الوحدة');
+                return;
+            }
+            
+            if (studentNames.length === 0) {
+                alert('الرجاء رفع ملف الإكسل أولاً');
+                return;
+            }
+            
+            // Send the data to the backend to create folder structure
+            fetch('http://localhost:5000/create_folders', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    unit_title: unitTitle,
+                    student_names: studentNames
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                if (data.success) {
+                    currentFolderId = data.folder_id;
+                    
+                    // Show success visual feedback
+                    const createBtn = document.getElementById('createFolderBtn');
+                    createBtn.classList.add('success');
+                    
+                    // Revert button style after a delay
+                    setTimeout(() => {
+                        createBtn.classList.remove('success');
+                    }, 1500);
+                    
+                    // Enable the save button after folder creation
+                    document.getElementById('saveBtn').disabled = false;
+                    document.getElementById('saveBtn').style.display = 'inline-block';
+                    
+                    alert(data.message);
+                } else {
+                    throw new Error('Unknown error occurred');
+                }
+            })
+            .catch(error => {
+                alert('خطأ في إنشاء المجلدات: ' + error.message);
+            });
+        });
+        
+        // Initially hide the save button
+        document.getElementById('saveBtn').style.display = 'none';
+        document.getElementById('saveBtn').disabled = true;
+        
+        document.getElementById('saveBtn').addEventListener('click', function() {
+            if (!currentFolderId) {
+                alert('لم يتم إنشاء مجلدات بعد. الرجاء النقر على "انشاء مجلد التقييم" أولاً.');
+                return;
+            }
+            
+            // Download the created folder structure
+            const unitTitle = document.getElementById('unitTitle').value;
+            
+            // Create a temporary link to download the zip file using the folder ID
+            const downloadUrl = `http://localhost:5000/download_folders/${currentFolderId}`;
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = downloadUrl;
+            a.download = unitTitle + '.zip';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            alert(`جاري تحميل المجلد...`);
+        });
+    </script>
+</body>
+</html>
+</body>
+</html>
