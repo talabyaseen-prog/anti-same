@@ -102,7 +102,7 @@ def create_folders():
     }
     
     # Return success message with the folder ID
-    return jsonify({'success': True, 'folder_id': folder_id, 'message': f'Folder structure created for {len(student_names)} students'})
+    return jsonify({'success': True, 'folder_id': folder_id, 'message': f'لقد تم انشاء ملفات التقييم ل {len(student_names)} طالب'})
 
 @app.route('/download_folders/<folder_id>', methods=['GET'])
 def download_folders(folder_id):

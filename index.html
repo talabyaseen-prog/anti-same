@@ -7,16 +7,35 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Updated layout with both elements on the same line -->
+    <!-- Updated layout with separate columns for each button and its elements -->
     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; gap: 10px;">
-        <button class="btn" id="createFolderBtn" disabled style="flex: 1; min-width: 0;">انشاء مجلد التقييم</button>
+        <div style="flex: 1; min-width: 0; display: flex; gap: 10px;">
+            <!-- Column for Create Folder Button with its associated elements -->
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                <button class="btn" id="createFolderBtn" disabled style="width: 100%;">انشاء مجلد التقييم</button>
+                <div id="folderCreationStatus">
+                    تم إنشاء المجلدات بنجاح
+                </div>
+                <button id="saveBtn">حفظ مجلد التقييم</button>
+            </div>
+            
+            <!-- Column for Process Data Button -->
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+                <button class="btn" id="processBtn" disabled style="width: 100%;">معالجة البيانات</button>
+                <!-- Process status and save button will be added in future -->
+            </div>
+        </div>
         <div style="flex: 1; min-width: 0;">
             <input type="file" id="excelFile" accept=".xlsx,.xls" style="display: none;">
             
             <!-- File upload area with dotted frame and interactive filling -->
             <div class="file-upload-area" id="fileUploadArea">
                 <i>📁</i>
-                <p>الرجاء رفع ملف الإكسل</p>
+                <span>الرجاء رفع ملف الإكسل</span>
+            </div>
+            
+            <!-- File name display below the upload area -->
+            <div class="file-name-container">
                 <p class="file-info">سيظهر اسم الملف هنا بعد التحميل</p>
                 <p class="file-name" id="fileNameDisplay">لا يوجد ملف مرفوق</p>
             </div>
@@ -30,10 +49,6 @@
     
     <div class="main-div" id="mainDiv">
         <!-- This area is empty for you to build manually -->
-    </div>
-    
-    <div style="text-align: center; margin-top: 20px;">
-        <button id="saveBtn">حفظ المجلد</button>
     </div>
     
     <script>
@@ -135,9 +150,17 @@
                         createBtn.classList.remove('success');
                     }, 1500);
                     
+                    // Show permanent success message
+                    const statusElement = document.getElementById('folderCreationStatus');
+                    statusElement.style.display = 'block';
+                    statusElement.textContent = data.message || 'تم إنشاء المجلدات بنجاح';
+                    
                     // Enable the save button after folder creation
                     document.getElementById('saveBtn').disabled = false;
                     document.getElementById('saveBtn').style.display = 'inline-block';
+                    
+                    // Disable the process button after folder creation (or handle differently based on your needs)
+                    document.getElementById('processBtn').disabled = false;
                     
                     alert(data.message);
                 } else {
@@ -149,8 +172,35 @@
             });
         });
         
-        // Initially hide the save button
-        document.getElementById('saveBtn').style.display = 'none';
+        document.getElementById('processBtn').addEventListener('click', function() {
+            const unitTitle = document.getElementById('unitTitle').value;
+            if (unitTitle.trim() === '') {
+                alert('الرجاء إدخال عنوان الوحدة');
+                return;
+            }
+            
+            if (studentNames.length === 0) {
+                alert('الرجاء رفع ملف الإكسل أولاً');
+                return;
+            }
+            
+            // For now, just show an alert - you can implement actual processing functionality here
+            alert(`جاري معالجة البيانات للوحدة: ${unitTitle}`);
+            
+            // Example: You could add additional backend processing here
+            // fetch('http://localhost:5000/process_data', {
+            //     method: 'POST',
+            //     headers: {
+            //         'Content-Type': 'application/json'
+            //     },
+            //     body: JSON.stringify({
+            //         unit_title: unitTitle,
+            //         student_names: studentNames
+            //     })
+            // })
+        });
+        
+        // Initially hide the save button - CSS handles display:none
         document.getElementById('saveBtn').disabled = true;
         
         document.getElementById('saveBtn').addEventListener('click', function() {
@@ -175,7 +225,5 @@
             alert(`جاري تحميل المجلد...`);
         });
     </script>
-</body>
-</html>
 </body>
 </html>
